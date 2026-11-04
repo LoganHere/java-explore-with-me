@@ -45,7 +45,7 @@ class StatsClientTest {
                 .andRespond(withSuccess("{\"id\":1,\"app\":\"ewm-main-service\",\"uri\":\"/events/1\","
                         + "\"ip\":\"192.168.0.1\",\"timestamp\":\"2026-11-04 12:00:00\"}", MediaType.APPLICATION_JSON));
 
-        EndpointHit saved = client.saveHit("/events/1", "192.168.0.1");
+        EndpointHit saved = client.saveHit("ewm-main-service", "/events/1", "192.168.0.1");
 
         assertEquals("/events/1", saved.getUri());
         assertEquals(LocalDateTime.of(2026, 11, 4, 12, 0), saved.getTimestamp());
@@ -58,7 +58,7 @@ class StatsClientTest {
         server.expect(manyTimes(), requestTo("http://localhost:9090/hit"))
                 .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
 
-        EndpointHit saved = client.saveHit("/events/1", "192.168.0.1");
+        EndpointHit saved = client.saveHit("ewm-main-service", "/events/1", "192.168.0.1");
 
         assertNull(saved);
         server.verify();

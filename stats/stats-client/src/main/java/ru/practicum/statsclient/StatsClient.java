@@ -27,8 +27,6 @@ import java.util.Objects;
 
 public class StatsClient {
 
-    public static final String APP_NAME = "ewm-main-service";
-
     private static final DateTimeFormatter STATS_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final RestTemplate restTemplate;
@@ -55,9 +53,9 @@ public class StatsClient {
                 .disable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     }
 
-    public EndpointHit saveHit(String uri, String ip) {
+    public EndpointHit saveHit(String app, String uri, String ip) {
         EndpointHit hit = EndpointHit.builder()
-                .app(APP_NAME)
+                .app(app)
                 .uri(uri)
                 .ip(ip)
                 .timestamp(LocalDateTime.now())
