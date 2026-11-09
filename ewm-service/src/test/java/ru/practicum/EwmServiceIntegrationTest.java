@@ -46,7 +46,7 @@ class EwmServiceIntegrationTest {
     void setUp() {
         when(statsClient.getStats(any(LocalDateTime.class), any(LocalDateTime.class), anyList(), anyBoolean()))
                 .thenReturn(List.of(new ViewStats("ewm-main-service", "/events/1", 7L)));
-        when(statsClient.saveHit(any(),any())).thenReturn(null);
+        when(statsClient.saveHit(any(), any(), any())).thenReturn(null);
     }
 
     @Test
