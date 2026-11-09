@@ -1,6 +1,8 @@
 services:
   stats-server:
-    build: stats-server
+    build:
+      context: ./stats/stats-server
+      dockerfile: Dockerfile
     image: stats-server
     container_name: stats-server
     ports:
@@ -14,10 +16,11 @@ services:
       - POSTGRES_PASSWORD=root
       - STATS_SERVER_URL=http://stats-server:9090
     healthcheck:
-      test: pg_isready -U root -d stats-db
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/actuator/health || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
   stats-db:
     image: postgres:16.1
@@ -27,13 +30,15 @@ services:
       - POSTGRES_PASSWORD=root
       - POSTGRES_DB=stats-db
     healthcheck:
-      test: pg_isready -U root -d stats-db
+      test: ["CMD-SHELL", "pg_isready -U root -d stats-db"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   ewm-service:
-    build: ewm-service
+    build:
+      context: ./ewm-service
+      dockerfile: Dockerfile
     image: ewm-service
     container_name: ewm-service
     ports:
@@ -57,7 +62,7 @@ services:
       - POSTGRES_PASSWORD=root
       - POSTGRES_DB=ewm-db
     healthcheck:
-      test: pg_isready -U root -d ewm-db
+      test: ["CMD-SHELL", "pg_isready -U root -d ewm-db"]
       interval: 5s
       timeout: 5s
       retries: 10
