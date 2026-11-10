@@ -16,12 +16,12 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("select e from Event e " +
             "where e.state = ru.practicum.entity.EventState.PUBLISHED " +
-            "and (:text is null or lower(e.annotation) like lower(concat('%', :text, '%')) " +
-            "or lower(e.description) like lower(concat('%', :text, '%'))) " +
-            "and (:categories is null or e.category.id in :categories) " +
-            "and (:paid is null or e.paid = :paid) " +
+            "and (cast(:text as string) is null or lower(e.annotation) like lower(concat('%', cast(:text as string), '%')) " +
+            "or lower(e.description) like lower(concat('%', cast(:text as string), '%'))) " +
+            "and (cast(:categories as string) is null or e.category.id in :categories) " +
+            "and (cast(:paid as boolean) is null or e.paid = :paid) " +
             "and e.eventDate >= :rangeStart " +
-            "and (:rangeEnd is null or e.eventDate <= :rangeEnd) " +
+            "and (cast(:rangeEnd as timestamp) is null or e.eventDate <= :rangeEnd) " +
             "and (:onlyAvailable = false or e.participantLimit = 0 or " +
             "e.participantLimit > (select count(r) from ParticipationRequest r " +
             "where r.event.id = e.id and r.status = ru.practicum.entity.RequestStatus.CONFIRMED))")
@@ -34,11 +34,11 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                      Pageable pageable);
 
     @Query("select e from Event e " +
-            "where (:users is null or e.initiator.id in :users) " +
-            "and (:states is null or e.state in :states) " +
-            "and (:categories is null or e.category.id in :categories) " +
-            "and (:rangeStart is null or e.eventDate >= :rangeStart) " +
-            "and (:rangeEnd is null or e.eventDate <= :rangeEnd)")
+            "where (cast(:users as string) is null or e.initiator.id in :users) " +
+            "and (cast(:states as string) is null or e.state in :states) " +
+            "and (cast(:categories as string) is null or e.category.id in :categories) " +
+            "and (cast(:rangeStart as timestamp) is null or e.eventDate >= :rangeStart) " +
+            "and (cast(:rangeEnd as timestamp) is null or e.eventDate <= :rangeEnd)")
     Page<Event> searchEventsForAdmin(@Param("users") List<Long> users,
                                      @Param("states") List<EventState> states,
                                      @Param("categories") List<Long> categories,
