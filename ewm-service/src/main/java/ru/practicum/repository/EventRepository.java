@@ -34,6 +34,26 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                      Pageable pageable);
 
     @Query("select e from Event e " +
+            "where e.state = ru.practicum.entity.EventState.PUBLISHED " +
+            "and (cast(:text as string) is null or lower(e.annotation) like lower(concat('%', cast(:text as string), '%')) " +
+            "or lower(e.description) like lower(concat('%', cast(:text as string), '%'))) " +
+            "and (cast(:categories as string) is null or e.category.id in :categories) " +
+            "and (cast(:paid as boolean) is null or e.paid = :paid) " +
+            "and e.eventDate >= :rangeStart " +
+            "and (cast(:rangeEnd as timestamp) is null or e.eventDate <= :rangeEnd) " +
+            "and (:onlyAvailable = false or e.participantLimit = 0 or " +
+            "e.participantLimit > (select count(r) from ParticipationRequest r " +
+            "where r.event.id = e.id and r.status = ru.practicum.entity.RequestStatus.CONFIRMED)) " +
+            "order by (e.likes - e.dislikes) desc, e.eventDate asc")
+    Page<Event> searchPublishedEventsByRating(@Param("text") String text,
+                                              @Param("categories") List<Long> categories,
+                                              @Param("paid") Boolean paid,
+                                              @Param("rangeStart") LocalDateTime rangeStart,
+                                              @Param("rangeEnd") LocalDateTime rangeEnd,
+                                              @Param("onlyAvailable") boolean onlyAvailable,
+                                              Pageable pageable);
+
+    @Query("select e from Event e " +
             "where (cast(:users as string) is null or e.initiator.id in :users) " +
             "and (cast(:states as string) is null or e.state in :states) " +
             "and (cast(:categories as string) is null or e.category.id in :categories) " +
@@ -52,4 +72,12 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     Optional<Event> findByIdWithCategoryAndInitiator(@Param("id") Long id);
 
     long countByCategoryId(Long categoryId);
+
+    @Query("select coalesce(sum(e.likes), 0) from Event e where e.initiator.id = :userId")
+    Long sumLikesByInitiatorId(@Param("userId") Long userId);
+
+    @Query("select coalesce(sum(e.dislikes), 0) from Event e where e.initiator.id = :userId")
+    Long sumDislikesByInitiatorId(@Param("userId") Long userId);
+
+    long countByInitiatorId(Long userId);
 }

@@ -32,12 +32,16 @@ public class EventFullDto {
 
     private String description;
 
+    private Long dislikes;
+
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime eventDate;
 
     private Long id;
 
     private UserShortDto initiator;
+
+    private Long likes;
 
     private Location location;
 
@@ -47,6 +51,8 @@ public class EventFullDto {
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime publishedOn;
+
+    private Long rating;
 
     private Boolean requestModeration;
 

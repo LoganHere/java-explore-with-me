@@ -58,6 +58,14 @@ public class Event {
     @Column(name = "lat", nullable = false)
     private Double lat;
 
+    @Builder.Default
+    @Column(name = "likes", nullable = false)
+    private Long likes = 0L;
+
+    @Builder.Default
+    @Column(name = "dislikes", nullable = false)
+    private Long dislikes = 0L;
+
     @Column(name = "lon", nullable = false)
     private Double lon;
 
