@@ -26,6 +26,8 @@ public class EventShortDto {
 
     private Long confirmedRequests;
 
+    private Long dislikes;
+
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime eventDate;
 
@@ -33,7 +35,11 @@ public class EventShortDto {
 
     private UserShortDto initiator;
 
+    private Long likes;
+
     private Boolean paid;
+
+    private Long rating;
 
     private String title;
 

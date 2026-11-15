@@ -1,0 +1,1671 @@
+{
+  "info": {
+    "name": "Explore With Me - рейтинг событий (feature_rating_events)",
+    "description": "Базовые тесты дополнительной функциональности «Рейтинг событий».\n\nПроверяются эндпоинты:\nPOST/PATCH/DELETE/GET /users/{userId}/events/{eventId}/rating — управление реакцией пользователя;\nGET /ratings/events/{eventId} — публичный рейтинг события;\nGET /ratings/users/{userId} — рейтинг автора события;\nGET /events?sort=RATING — сортировка событий по рейтингу.\n\nКоллекция не зависит от данных, которые уже есть в базе, и запускается повторно: почта пользователей, название категории и заголовки событий содержат уникальный суффикс.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01. Подготовка данных",
+      "description": "Создание пользователей, категории и событий, которые используются в проверках рейтинга. Почта, название категории и заголовки событий содержат уникальный суффикс, поэтому коллекция не зависит от данных, уже существующих в базе, и её можно запускать повторно.",
+      "item": [
+        {
+          "name": "Создать автора события",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Efremov Nikita\",\n  \"email\": \"{{authorEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Автор создаётся с почтой вида loganhepe+<суффикс>@yandex.ru, чтобы запуск не зависел от прежних данных"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = String(Date.now());",
+                  "pm.collectionVariables.set('suffix', suffix);",
+                  "pm.collectionVariables.set('authorEmail', 'loganhepe+' + suffix + '@yandex.ru');",
+                  "pm.collectionVariables.set('viewerEmail', 'loganhepe.viewer+' + suffix + '@yandex.ru');",
+                  "pm.collectionVariables.set('secondViewerEmail', 'loganhepe.viewer2+' + suffix + '@yandex.ru');",
+                  "pm.collectionVariables.set('categoryName', 'Рейтинги и концерты ' + suffix);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "pm.test('Идентификатор сохранён', function () {\n    const body = pm.response.json();\n    pm.expect(body.id).to.be.a('number');\n    pm.collectionVariables.set('authorId', body.id);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Создать первого зрителя",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nikita Viewer\",\n  \"email\": \"{{viewerEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "pm.test('Идентификатор сохранён', function () {\n    const body = pm.response.json();\n    pm.expect(body.id).to.be.a('number');\n    pm.collectionVariables.set('viewerId', body.id);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Создать второго зрителя",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Efremov Nikita Viewer\",\n  \"email\": \"{{secondViewerEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "pm.test('Идентификатор сохранён', function () {\n    const body = pm.response.json();\n    pm.expect(body.id).to.be.a('number');\n    pm.collectionVariables.set('secondViewerId', body.id);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Создать категорию",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "categories"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{categoryName}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "pm.test('Идентификатор сохранён', function () {\n    const body = pm.response.json();\n    pm.expect(body.id).to.be.a('number');\n    pm.collectionVariables.set('categoryId', body.id);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Создать первое событие",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{authorId}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{authorId}}",
+                "events"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"annotation\": \"Концерт классической музыки в центре города\",\n  \"category\": {{categoryId}},\n  \"description\": \"Концерт классической музыки с участием симфонического оркестра.\",\n  \"eventDate\": \"{{eventDate}}\",\n  \"location\": {\"lat\": 55.754167, \"lon\": 37.62},\n  \"paid\": true,\n  \"participantLimit\": 10,\n  \"requestModeration\": true,\n  \"title\": \"Концерт классической музыки {{suffix}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = pm.collectionVariables.get('suffix') || String(Date.now());",
+                  "pm.collectionVariables.set('suffix', suffix);",
+                  "const date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "const pad = (value) => String(value).padStart(2, '0');",
+                  "const formatted = date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());",
+                  "pm.variables.set('eventDate', formatted);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "pm.test('Идентификатор сохранён', function () {\n    const body = pm.response.json();\n    pm.expect(body.id).to.be.a('number');\n    pm.collectionVariables.set('eventId', body.id);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Опубликовать первое событие",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "events",
+                "{{eventId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stateAction\": \"PUBLISH_EVENT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});",
+                  "pm.test('Событие опубликовано', function () {\n    pm.expect(pm.response.json().state).to.eql('PUBLISHED');\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Создать второе событие",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{authorId}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{authorId}}",
+                "events"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"annotation\": \"Выставка современного искусства в галерее\",\n  \"category\": {{categoryId}},\n  \"description\": \"Выставка современного искусства с работами молодых художников.\",\n  \"eventDate\": \"{{eventDate}}\",\n  \"location\": {\"lat\": 55.760045, \"lon\": 37.618642},\n  \"paid\": false,\n  \"participantLimit\": 0,\n  \"requestModeration\": false,\n  \"title\": \"Выставка современного искусства {{suffix}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = pm.collectionVariables.get('suffix') || String(Date.now());",
+                  "pm.collectionVariables.set('suffix', suffix);",
+                  "const date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "const pad = (value) => String(value).padStart(2, '0');",
+                  "const formatted = date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());",
+                  "pm.variables.set('eventDate', formatted);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "pm.test('Идентификатор сохранён', function () {\n    const body = pm.response.json();\n    pm.expect(body.id).to.be.a('number');\n    pm.collectionVariables.set('secondEventId', body.id);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Опубликовать второе событие",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/events/{{secondEventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "events",
+                "{{secondEventId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stateAction\": \"PUBLISH_EVENT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});",
+                  "pm.test('Событие опубликовано', function () {\n    pm.expect(pm.response.json().state).to.eql('PUBLISHED');\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Создать событие без публикации",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{authorId}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{authorId}}",
+                "events"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"annotation\": \"Черновик события для проверки ограничений рейтинга\",\n  \"category\": {{categoryId}},\n  \"description\": \"Черновик события нужен для проверки запрета оценки неопубликованных событий.\",\n  \"eventDate\": \"{{eventDate}}\",\n  \"location\": {\"lat\": 55.741, \"lon\": 37.615},\n  \"paid\": true,\n  \"participantLimit\": 5,\n  \"requestModeration\": true,\n  \"title\": \"Черновик события {{suffix}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = pm.collectionVariables.get('suffix') || String(Date.now());",
+                  "pm.collectionVariables.set('suffix', suffix);",
+                  "const date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "const pad = (value) => String(value).padStart(2, '0');",
+                  "const formatted = date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());",
+                  "pm.variables.set('eventDate', formatted);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "pm.test('Идентификатор сохранён', function () {\n    const body = pm.response.json();\n    pm.expect(body.id).to.be.a('number');\n    pm.collectionVariables.set('draftEventId', body.id);\n});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02. Рейтинг мероприятия",
+      "description": "Лайки и дизлайки событий, изменение и удаление реакции",
+      "item": [
+        {
+          "name": "Поставить лайк событию",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{viewerId}}/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{viewerId}}",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reaction\": \"LIKE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "const body = pm.response.json();\npm.test('Реакция сохранена как лайк', function () {\n    pm.expect(body.reaction).to.eql('LIKE');\n});\npm.test('Реакция относится к нужному событию', function () {\n    pm.expect(body.event).to.eql(Number(pm.collectionVariables.get('eventId')));\n});\npm.test('Реакция относится к нужному пользователю', function () {\n    pm.expect(body.user).to.eql(Number(pm.collectionVariables.get('viewerId')));\n});\npm.test('Дата создания реакции заполнена', function () {\n    pm.expect(body.created).to.be.a('string');\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Получить свою реакцию на событие",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{viewerId}}/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{viewerId}}",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});\npm.test('Реакция равна LIKE', function () {\n    pm.expect(pm.response.json().reaction).to.eql('LIKE');\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Получить публичный рейтинг события",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ratings/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ratings",
+                "events",
+                "{{eventId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect(pm.response.code).to.eql(200);\n});\nconst body = pm.response.json();\npm.test('Лайков 1', function () {\n    pm.expect(body.likes).to.eql(1);\n});\npm.test('Дизлайков 0', function () {\n    pm.expect(body.dislikes).to.eql(0);\n});\npm.test('Рейтинг равен 1', function () {\n    pm.expect(body.rating).to.eql(1);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Проверить рейтинг в карточке события",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "{{eventId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});",
+                  "const body = pm.response.json();\npm.test('Лайков 1', function () {\n    pm.expect(body.likes).to.eql(1);\n});\npm.test('Рейтинг равен 1', function () {\n    pm.expect(body.rating).to.eql(1);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Повторно оценить событие нельзя",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{viewerId}}/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{viewerId}}",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reaction\": \"DISLIKE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 409', function () {\n    pm.expect([409]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Автор не может оценить своё событие",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{authorId}}/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{authorId}}",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reaction\": \"LIKE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 409', function () {\n    pm.expect([409]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Нельзя оценить неопубликованное событие",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{viewerId}}/events/{{draftEventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{viewerId}}",
+                "events",
+                "{{draftEventId}}",
+                "rating"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reaction\": \"LIKE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 409', function () {\n    pm.expect([409]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Некорректная реакция отклоняется",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{viewerId}}/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{viewerId}}",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reaction\": \"SUPER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 400', function () {\n    pm.expect([400]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Пустая реакция отклоняется",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{viewerId}}/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{viewerId}}",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 400', function () {\n    pm.expect([400]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Нельзя оценить несуществующее событие",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{viewerId}}/events/999999/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{viewerId}}",
+                "events",
+                "999999",
+                "rating"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reaction\": \"LIKE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 404', function () {\n    pm.expect([404]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Нельзя оценить событие от имени несуществующего пользователя",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/999999/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "999999",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reaction\": \"LIKE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 404', function () {\n    pm.expect([404]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Публичный рейтинг неопубликованного события недоступен",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ratings/events/{{draftEventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ratings",
+                "events",
+                "{{draftEventId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 404', function () {\n    pm.expect([404]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Изменить реакцию на дизлайк",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{viewerId}}/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{viewerId}}",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reaction\": \"DISLIKE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});\npm.test('Реакция равна DISLIKE', function () {\n    pm.expect(pm.response.json().reaction).to.eql('DISLIKE');\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Проверить рейтинг после изменения реакции",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ratings/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ratings",
+                "events",
+                "{{eventId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect(pm.response.code).to.eql(200);\n});\nconst body = pm.response.json();\npm.test('Лайков 0', function () {\n    pm.expect(body.likes).to.eql(0);\n});\npm.test('Дизлайков 1', function () {\n    pm.expect(body.dislikes).to.eql(1);\n});\npm.test('Рейтинг равен -1', function () {\n    pm.expect(body.rating).to.eql(-1);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Второй зритель ставит дизлайк",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{secondViewerId}}/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{secondViewerId}}",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reaction\": \"DISLIKE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});\npm.test('Реакция равна DISLIKE', function () {\n    pm.expect(pm.response.json().reaction).to.eql('DISLIKE');\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Проверить рейтинг после второй реакции",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ratings/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ratings",
+                "events",
+                "{{eventId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect(pm.response.code).to.eql(200);\n});\nconst body = pm.response.json();\npm.test('Лайков 0', function () {\n    pm.expect(body.likes).to.eql(0);\n});\npm.test('Дизлайков 2', function () {\n    pm.expect(body.dislikes).to.eql(2);\n});\npm.test('Рейтинг равен -2', function () {\n    pm.expect(body.rating).to.eql(-2);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Удалить свою реакцию",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{viewerId}}/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{viewerId}}",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 204', function () {\n    pm.expect([204]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Удалённая реакция недоступна",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{viewerId}}/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{viewerId}}",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 404', function () {\n    pm.expect([404]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Повторное удаление реакции отклоняется",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{viewerId}}/events/{{eventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{viewerId}}",
+                "events",
+                "{{eventId}}",
+                "rating"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 404', function () {\n    pm.expect([404]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рейтинг после удаления реакции",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ratings/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ratings",
+                "events",
+                "{{eventId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect(pm.response.code).to.eql(200);\n});\nconst body = pm.response.json();\npm.test('Лайков 0', function () {\n    pm.expect(body.likes).to.eql(0);\n});\npm.test('Дизлайков 1', function () {\n    pm.expect(body.dislikes).to.eql(1);\n});\npm.test('Рейтинг равен -1', function () {\n    pm.expect(body.rating).to.eql(-1);\n});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03. Рейтинг автора события",
+      "description": "Рейтинг инициатора события складывается из реакций на все его события",
+      "item": [
+        {
+          "name": "Поставить лайк второму событию",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{secondViewerId}}/events/{{secondEventId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{secondViewerId}}",
+                "events",
+                "{{secondEventId}}",
+                "rating"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reaction\": \"LIKE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});\npm.test('Реакция равна LIKE', function () {\n    pm.expect(pm.response.json().reaction).to.eql('LIKE');\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Получить рейтинг автора",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ratings/users/{{authorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ratings",
+                "users",
+                "{{authorId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});",
+                  "const body = pm.response.json();\npm.test('Рейтинг относится к нужному автору', function () {\n    pm.expect(body.userId).to.eql(Number(pm.collectionVariables.get('authorId')));\n});\npm.test('Имя автора заполнено', function () {\n    pm.expect(body.name).to.eql('Efremov Nikita');\n});\npm.test('Лайки посчитаны', function () {\n    pm.expect(body.likes).to.be.at.least(1);\n});\npm.test('Итоговый рейтинг посчитан', function () {\n    pm.expect(body.rating).to.eql(body.likes - body.dislikes);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рейтинг несуществующего автора недоступен",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ratings/users/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ratings",
+                "users",
+                "999999"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 404', function () {\n    pm.expect([404]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04. Сортировка событий по рейтингу",
+      "description": "Публичный список событий можно отсортировать по рейтингу",
+      "item": [
+        {
+          "name": "Получить события с сортировкой по рейтингу",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "RATING"
+                },
+                {
+                  "key": "from",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});",
+                  "const body = pm.response.json();\npm.test('Ответ является списком событий', function () {\n    pm.expect(body).to.be.an('array');\n});\npm.test('У события заполнен рейтинг', function () {\n    pm.expect(body[0]).to.have.property('rating');\n});\npm.test('События отсортированы по убыванию рейтинга', function () {\n    const ratings = body.map((event) => event.rating);\n    const sorted = ratings.slice().sort((first, second) => second - first);\n    pm.expect(ratings).to.eql(sorted);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Получить события с сортировкой по дате",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "EVENT_DATE"
+                },
+                {
+                  "key": "from",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Получить события с сортировкой по просмотрам",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "VIEWS"
+                },
+                {
+                  "key": "from",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Сортировка по рейтингу с пагинацией",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "RATING"
+                },
+                {
+                  "key": "from",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});",
+                  "pm.test('Размер страницы соблюдается', function () {\n    pm.expect(pm.response.json().length).to.be.at.most(5);\n});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "suffix",
+      "value": ""
+    },
+    {
+      "key": "authorEmail",
+      "value": ""
+    },
+    {
+      "key": "viewerEmail",
+      "value": ""
+    },
+    {
+      "key": "secondViewerEmail",
+      "value": ""
+    },
+    {
+      "key": "categoryName",
+      "value": ""
+    },
+    {
+      "key": "authorId",
+      "value": ""
+    },
+    {
+      "key": "viewerId",
+      "value": ""
+    },
+    {
+      "key": "secondViewerId",
+      "value": ""
+    },
+    {
+      "key": "categoryId",
+      "value": ""
+    },
+    {
+      "key": "eventId",
+      "value": ""
+    },
+    {
+      "key": "secondEventId",
+      "value": ""
+    },
+    {
+      "key": "draftEventId",
+      "value": ""
+    }
+  ]
+}

@@ -48,6 +48,10 @@ public class EventServiceImpl implements EventService {
 
     private static final int MIN_HOURS_BEFORE_PUBLISH = 1;
 
+    private static final String SORT_BY_VIEWS = "VIEWS";
+
+    private static final String SORT_BY_RATING = "RATING";
+
     private final EventRepository eventRepository;
 
     private final UserRepository userRepository;
@@ -66,11 +70,10 @@ public class EventServiceImpl implements EventService {
         validateRange(rangeStart, rangeEnd);
         statsService.saveHit("/events", ip);
         LocalDateTime start = rangeStart == null ? LocalDateTime.now() : rangeStart;
-        Pageable pageable = buildPageable(from, size);
-        Page<Event> events = eventRepository.searchPublishedEvents(text, categories, paid, start, rangeEnd,
-                onlyAvailable, pageable);
+        Page<Event> events = findPublishedEvents(text, categories, paid, start, rangeEnd, onlyAvailable,
+                sort, from, size);
         List<EventShortDto> result = toShortDtos(events.getContent());
-        if ("VIEWS".equalsIgnoreCase(sort)) {
+        if (SORT_BY_VIEWS.equalsIgnoreCase(sort)) {
             result.sort(Comparator.comparing(EventShortDto::getViews,
                     Comparator.nullsLast(Comparator.reverseOrder())));
         }
@@ -274,10 +277,27 @@ public class EventServiceImpl implements EventService {
         }
     }
 
+    private Page<Event> findPublishedEvents(String text, List<Long> categories, Boolean paid,
+                                            LocalDateTime rangeStart, LocalDateTime rangeEnd,
+                                            boolean onlyAvailable, String sort, int from, int size) {
+        if (SORT_BY_RATING.equalsIgnoreCase(sort)) {
+            return eventRepository.searchPublishedEventsByRating(text, categories, paid, rangeStart, rangeEnd,
+                    onlyAvailable, buildUnsortedPageable(from, size));
+        }
+        return eventRepository.searchPublishedEvents(text, categories, paid, rangeStart, rangeEnd,
+                onlyAvailable, buildPageable(from, size));
+    }
+
     private Pageable buildPageable(int from, int size) {
         int safeSize = Math.max(size, 1);
         int safeFrom = Math.max(from, 0);
         return PageRequest.of(safeFrom / safeSize, safeSize, Sort.by(Sort.Direction.ASC, "eventDate"));
+    }
+
+    private Pageable buildUnsortedPageable(int from, int size) {
+        int safeSize = Math.max(size, 1);
+        int safeFrom = Math.max(from, 0);
+        return PageRequest.of(safeFrom / safeSize, safeSize);
     }
 
     private List<EventShortDto> toShortDtos(List<Event> events) {
