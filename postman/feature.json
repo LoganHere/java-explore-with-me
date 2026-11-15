@@ -1,13 +1,13 @@
 {
   "info": {
-    "name": "Explore With Me - рейтинг событий (feature/rating_events)",
-    "description": "Базовые тесты дополнительной функциональности «Рейтинг событий».\n\nПроверяются эндпоинты:\nPOST/PATCH/DELETE/GET /users/{userId}/events/{eventId}/rating — управление реакцией пользователя;\nGET /ratings/events/{eventId} — публичный рейтинг события;\nGET /ratings/users/{userId} — рейтинг автора события;\nGET /events?sort=RATING — сортировка событий по рейтингу.\n\nКоллекцию можно запускать повторно: подготовительные запросы находят уже созданные данные.",
+    "name": "Explore With Me - рейтинг событий (feature_rating_events)",
+    "description": "Базовые тесты дополнительной функциональности «Рейтинг событий».\n\nПроверяются эндпоинты:\nPOST/PATCH/DELETE/GET /users/{userId}/events/{eventId}/rating — управление реакцией пользователя;\nGET /ratings/events/{eventId} — публичный рейтинг события;\nGET /ratings/users/{userId} — рейтинг автора события;\nGET /events?sort=RATING — сортировка событий по рейтингу.\n\nКоллекция не зависит от данных, которые уже есть в базе, и запускается повторно: почта пользователей, название категории и заголовки событий содержат уникальный суффикс.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
       "name": "01. Подготовка данных",
-      "description": "Создание пользователей, категории и событий, которые используются в проверках рейтинга",
+      "description": "Создание пользователей, категории и событий, которые используются в проверках рейтинга. Почта, название категории и заголовки событий содержат уникальный суффикс, поэтому коллекция не зависит от данных, уже существующих в базе, и её можно запускать повторно.",
       "item": [
         {
           "name": "Создать автора события",
@@ -31,69 +31,38 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Efremov Nikita\",\n  \"email\": \"loganhepe@yandex.ru\"\n}",
+              "raw": "{\n  \"name\": \"Efremov Nikita\",\n  \"email\": \"{{authorEmail}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Efremov Nikita, loganhepe@yandex.ru"
+            "description": "Автор создаётся с почтой вида loganhepe+<суффикс>@yandex.ru, чтобы запуск не зависел от прежних данных"
           },
           "response": [],
           "event": [
             {
-              "listen": "test",
+              "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Код ответа 201, 409', function () {\n    pm.expect([201, 409]).to.include(pm.response.code);\n});",
-                  "if (pm.response.code === 201) {\n    pm.collectionVariables.set('authorId', pm.response.json().id);\n}"
+                  "const suffix = String(Date.now());",
+                  "pm.collectionVariables.set('suffix', suffix);",
+                  "pm.collectionVariables.set('authorEmail', 'loganhepe+' + suffix + '@yandex.ru');",
+                  "pm.collectionVariables.set('viewerEmail', 'loganhepe.viewer+' + suffix + '@yandex.ru');",
+                  "pm.collectionVariables.set('secondViewerEmail', 'loganhepe.viewer2+' + suffix + '@yandex.ru');",
+                  "pm.collectionVariables.set('categoryName', 'Рейтинги и концерты ' + suffix);"
                 ]
               }
-            }
-          ]
-        },
-        {
-          "name": "Найти автора события по почте",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/admin/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admin",
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "from",
-                  "value": "0"
-                },
-                {
-                  "key": "size",
-                  "value": "100"
-                }
-              ]
-            }
-          },
-          "response": [],
-          "event": [
+            },
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});",
-                  "const items = pm.response.json();\nconst found = items.find((item) => item.email === 'loganhepe@yandex.ru');\npm.test('Автор найден', function () {\n    pm.expect(found).to.be.an('object');\n});\nif (found) {\n    pm.collectionVariables.set('authorId', found.id);\n}"
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "pm.test('Идентификатор сохранён', function () {\n    const body = pm.response.json();\n    pm.expect(body.id).to.be.a('number');\n    pm.collectionVariables.set('authorId', body.id);\n});"
                 ]
               }
             }
@@ -121,7 +90,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Nikita Viewer\",\n  \"email\": \"loganhepe.viewer@yandex.ru\"\n}",
+              "raw": "{\n  \"name\": \"Nikita Viewer\",\n  \"email\": \"{{viewerEmail}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -136,53 +105,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Код ответа 201, 409', function () {\n    pm.expect([201, 409]).to.include(pm.response.code);\n});",
-                  "if (pm.response.code === 201) {\n    pm.collectionVariables.set('viewerId', pm.response.json().id);\n}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Найти первого зрителя по почте",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/admin/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admin",
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "from",
-                  "value": "0"
-                },
-                {
-                  "key": "size",
-                  "value": "100"
-                }
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});",
-                  "const items = pm.response.json();\nconst found = items.find((item) => item.email === 'loganhepe.viewer@yandex.ru');\npm.test('Зритель найден', function () {\n    pm.expect(found).to.be.an('object');\n});\nif (found) {\n    pm.collectionVariables.set('viewerId', found.id);\n}"
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "pm.test('Идентификатор сохранён', function () {\n    const body = pm.response.json();\n    pm.expect(body.id).to.be.a('number');\n    pm.collectionVariables.set('viewerId', body.id);\n});"
                 ]
               }
             }
@@ -210,7 +134,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Efremov Nikita Second\",\n  \"email\": \"loganhepe.viewer2@yandex.ru\"\n}",
+              "raw": "{\n  \"name\": \"Efremov Nikita Viewer\",\n  \"email\": \"{{secondViewerEmail}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -225,53 +149,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Код ответа 201, 409', function () {\n    pm.expect([201, 409]).to.include(pm.response.code);\n});",
-                  "if (pm.response.code === 201) {\n    pm.collectionVariables.set('secondViewerId', pm.response.json().id);\n}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Найти второго зрителя по почте",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/admin/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admin",
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "from",
-                  "value": "0"
-                },
-                {
-                  "key": "size",
-                  "value": "100"
-                }
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});",
-                  "const items = pm.response.json();\nconst found = items.find((item) => item.email === 'loganhepe.viewer2@yandex.ru');\npm.test('Зритель найден', function () {\n    pm.expect(found).to.be.an('object');\n});\nif (found) {\n    pm.collectionVariables.set('secondViewerId', found.id);\n}"
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "pm.test('Идентификатор сохранён', function () {\n    const body = pm.response.json();\n    pm.expect(body.id).to.be.a('number');\n    pm.collectionVariables.set('secondViewerId', body.id);\n});"
                 ]
               }
             }
@@ -299,7 +178,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Рейтинги и концерты\"\n}",
+              "raw": "{\n  \"name\": \"{{categoryName}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -314,52 +193,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Код ответа 201, 409', function () {\n    pm.expect([201, 409]).to.include(pm.response.code);\n});",
-                  "if (pm.response.code === 201) {\n    pm.collectionVariables.set('categoryId', pm.response.json().id);\n}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Найти категорию по названию",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/categories",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "categories"
-              ],
-              "query": [
-                {
-                  "key": "from",
-                  "value": "0"
-                },
-                {
-                  "key": "size",
-                  "value": "100"
-                }
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});",
-                  "const items = pm.response.json();\nconst found = items.find((item) => item.name === 'Рейтинги и концерты');\npm.test('Категория найдена', function () {\n    pm.expect(found).to.be.an('object');\n});\nif (found) {\n    pm.collectionVariables.set('categoryId', found.id);\n}"
+                  "pm.test('Код ответа 201', function () {\n    pm.expect([201]).to.include(pm.response.code);\n});",
+                  "pm.test('Идентификатор сохранён', function () {\n    const body = pm.response.json();\n    pm.expect(body.id).to.be.a('number');\n    pm.collectionVariables.set('categoryId', body.id);\n});"
                 ]
               }
             }
@@ -388,7 +223,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"annotation\": \"Концерт классической музыки в центре города\",\n  \"category\": {{categoryId}},\n  \"description\": \"Концерт классической музыки с участием симфонического оркестра.\",\n  \"eventDate\": \"{{eventDate}}\",\n  \"location\": {\"lat\": 55.754167, \"lon\": 37.62},\n  \"paid\": true,\n  \"participantLimit\": 10,\n  \"requestModeration\": true,\n  \"title\": \"Концерт классической музыки\"\n}",
+              "raw": "{\n  \"annotation\": \"Концерт классической музыки в центре города\",\n  \"category\": {{categoryId}},\n  \"description\": \"Концерт классической музыки с участием симфонического оркестра.\",\n  \"eventDate\": \"{{eventDate}}\",\n  \"location\": {\"lat\": 55.754167, \"lon\": 37.62},\n  \"paid\": true,\n  \"participantLimit\": 10,\n  \"requestModeration\": true,\n  \"title\": \"Концерт классической музыки {{suffix}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -403,6 +238,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "const suffix = pm.collectionVariables.get('suffix') || String(Date.now());",
+                  "pm.collectionVariables.set('suffix', suffix);",
                   "const date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
                   "const pad = (value) => String(value).padStart(2, '0');",
                   "const formatted = date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());",
@@ -490,7 +327,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"annotation\": \"Выставка современного искусства в галерее\",\n  \"category\": {{categoryId}},\n  \"description\": \"Выставка современного искусства с работами молодых художников.\",\n  \"eventDate\": \"{{eventDate}}\",\n  \"location\": {\"lat\": 55.760045, \"lon\": 37.618642},\n  \"paid\": false,\n  \"participantLimit\": 0,\n  \"requestModeration\": false,\n  \"title\": \"Выставка современного искусства\"\n}",
+              "raw": "{\n  \"annotation\": \"Выставка современного искусства в галерее\",\n  \"category\": {{categoryId}},\n  \"description\": \"Выставка современного искусства с работами молодых художников.\",\n  \"eventDate\": \"{{eventDate}}\",\n  \"location\": {\"lat\": 55.760045, \"lon\": 37.618642},\n  \"paid\": false,\n  \"participantLimit\": 0,\n  \"requestModeration\": false,\n  \"title\": \"Выставка современного искусства {{suffix}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -505,6 +342,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "const suffix = pm.collectionVariables.get('suffix') || String(Date.now());",
+                  "pm.collectionVariables.set('suffix', suffix);",
                   "const date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
                   "const pad = (value) => String(value).padStart(2, '0');",
                   "const formatted = date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());",
@@ -592,7 +431,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"annotation\": \"Черновик события для проверки ограничений рейтинга\",\n  \"category\": {{categoryId}},\n  \"description\": \"Черновик события нужен для проверки запрета оценки неопубликованных событий.\",\n  \"eventDate\": \"{{eventDate}}\",\n  \"location\": {\"lat\": 55.741, \"lon\": 37.615},\n  \"paid\": true,\n  \"participantLimit\": 5,\n  \"requestModeration\": true,\n  \"title\": \"Черновик события\"\n}",
+              "raw": "{\n  \"annotation\": \"Черновик события для проверки ограничений рейтинга\",\n  \"category\": {{categoryId}},\n  \"description\": \"Черновик события нужен для проверки запрета оценки неопубликованных событий.\",\n  \"eventDate\": \"{{eventDate}}\",\n  \"location\": {\"lat\": 55.741, \"lon\": 37.615},\n  \"paid\": true,\n  \"participantLimit\": 5,\n  \"requestModeration\": true,\n  \"title\": \"Черновик события {{suffix}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -607,6 +446,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "const suffix = pm.collectionVariables.get('suffix') || String(Date.now());",
+                  "pm.collectionVariables.set('suffix', suffix);",
                   "const date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
                   "const pad = (value) => String(value).padStart(2, '0');",
                   "const formatted = date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());",
@@ -1533,7 +1374,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Код ответа 200', function () {\n    pm.expect([200]).to.include(pm.response.code);\n});",
-                  "const body = pm.response.json();\npm.test('Рейтинг относится к нужному автору', function () {\n    pm.expect(body.userId).to.eql(Number(pm.collectionVariables.get('authorId')));\n});\npm.test('Имя автора заполнено', function () {\n    pm.expect(body.name).to.be.a('string');\n});\npm.test('Лайки посчитаны', function () {\n    pm.expect(body.likes).to.be.at.least(1);\n});\npm.test('Итоговый рейтинг посчитан', function () {\n    pm.expect(body.rating).to.eql(body.likes - body.dislikes);\n});"
+                  "const body = pm.response.json();\npm.test('Рейтинг относится к нужному автору', function () {\n    pm.expect(body.userId).to.eql(Number(pm.collectionVariables.get('authorId')));\n});\npm.test('Имя автора заполнено', function () {\n    pm.expect(body.name).to.eql('Efremov Nikita');\n});\npm.test('Лайки посчитаны', function () {\n    pm.expect(body.likes).to.be.at.least(1);\n});\npm.test('Итоговый рейтинг посчитан', function () {\n    pm.expect(body.rating).to.eql(body.likes - body.dislikes);\n});"
                 ]
               }
             }
@@ -1777,6 +1618,26 @@
     {
       "key": "baseUrl",
       "value": "http://localhost:8080"
+    },
+    {
+      "key": "suffix",
+      "value": ""
+    },
+    {
+      "key": "authorEmail",
+      "value": ""
+    },
+    {
+      "key": "viewerEmail",
+      "value": ""
+    },
+    {
+      "key": "secondViewerEmail",
+      "value": ""
+    },
+    {
+      "key": "categoryName",
+      "value": ""
     },
     {
       "key": "authorId",
